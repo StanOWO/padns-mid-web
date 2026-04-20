@@ -1,3 +1,4 @@
+import { sql } from '@vercel/postgres';
 import { getSession } from '@/lib/auth';
 import { updateAvatar, initDB } from '@/lib/db';
 import {
@@ -31,7 +32,6 @@ export async function POST(request) {
       );
     }
 
-    // Verify magic bytes
     const base64Data = avatar.split(',')[1];
     if (!base64Data) {
       return jsonResponse({ error: '圖片資料格式錯誤' }, 400);
@@ -49,12 +49,23 @@ export async function POST(request) {
     }
 
     await initDB();
-    await updateAvatar(session.id, avatar);
 
-    return jsonResponse({ avatar });
+    // Save with RETURNING to verify
+    const result = await sql`
+      UPDATE users SET avatar = ${avatar} WHERE id = ${session.id}
+      RETURNING id, LENGTH(avatar) as saved_length
+    `;
+    const saved = result.rows[0];
+    console.log('[upload] saved:', saved, 'input length:', avatar.length);
+
+    // Read back to verify persistence
+    const verify = await sql`SELECT LENGTH(avatar) as len FROM users WHERE id = ${session.id}`;
+    console.log('[upload] verify read-back:', verify.rows[0]);
+
+    return jsonResponse({ avatar, _debug: { saved, verified: verify.rows[0] } });
   } catch (err) {
     if (err?.digest === 'DYNAMIC_SERVER_USAGE') throw err;
     console.error('Upload error:', err);
-    return jsonResponse({ error: '上傳失敗' }, 500);
+    return jsonResponse({ error: '上傳失敗: ' + err.message }, 500);
   }
 }
