@@ -9,11 +9,19 @@ export function UserProvider({ children }) {
 
   const refreshUser = useCallback(async () => {
     try {
-      const res = await fetch('/api/auth/me?_t=' + Date.now(), { cache: 'no-store' });
-      const data = await res.json();
-      console.log('[UserContext] me response:', data.user?.username, 'avatar:', !!(data.user?.avatar));
+      const res = await fetch('/api/auth/me?_t=' + Date.now(), {
+        cache: 'no-store',
+        headers: { 'Accept': 'application/json' },
+      });
+      if (!res.ok) {
+        setUser(null);
+        return;
+      }
+      const text = await res.text();
+      const data = JSON.parse(text);
       setUser(data.user || null);
-    } catch {
+    } catch (err) {
+      console.error('refreshUser failed:', err);
       setUser(null);
     } finally {
       setLoaded(true);
