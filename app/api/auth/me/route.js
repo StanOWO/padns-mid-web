@@ -21,6 +21,7 @@ export async function GET(request) {
       user: { id: user.id, username: user.username, avatar: user.avatar },
     });
   } catch (err) {
+    if (err?.digest === 'DYNAMIC_SERVER_USAGE') throw err;
     console.error('Me error:', err);
     return jsonResponse({ user: null });
   }

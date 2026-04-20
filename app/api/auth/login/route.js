@@ -47,6 +47,7 @@ export async function POST(request) {
       { 'Set-Cookie': buildTokenCookie(token) }
     );
   } catch (err) {
+    if (err?.digest === 'DYNAMIC_SERVER_USAGE') throw err;
     console.error('Login error:', err);
     return jsonResponse({ error: '伺服器錯誤' }, 500);
   }

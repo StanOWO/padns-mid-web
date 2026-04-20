@@ -88,6 +88,7 @@ export async function POST(request) {
     const result = fallbackRewrite(prompt);
     return jsonResponse({ result });
   } catch (err) {
+    if (err?.digest === 'DYNAMIC_SERVER_USAGE') throw err;
     console.error('AI error:', err);
     return jsonResponse({ error: 'AI 服務暫時無法使用' }, 500);
   }

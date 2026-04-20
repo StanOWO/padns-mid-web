@@ -23,6 +23,7 @@ export async function GET() {
 
     return jsonResponse({ messages: safe });
   } catch (err) {
+    if (err?.digest === 'DYNAMIC_SERVER_USAGE') throw err;
     console.error('Messages GET error:', err);
     return jsonResponse({ error: '無法載入留言' }, 500);
   }
@@ -63,6 +64,7 @@ export async function POST(request) {
 
     return jsonResponse({ message: msg }, 201);
   } catch (err) {
+    if (err?.digest === 'DYNAMIC_SERVER_USAGE') throw err;
     console.error('Messages POST error:', err);
     return jsonResponse({ error: '無法發送留言' }, 500);
   }
@@ -96,6 +98,7 @@ export async function DELETE(request) {
 
     return jsonResponse({ ok: true });
   } catch (err) {
+    if (err?.digest === 'DYNAMIC_SERVER_USAGE') throw err;
     console.error('Messages DELETE error:', err);
     return jsonResponse({ error: '無法刪除留言' }, 500);
   }

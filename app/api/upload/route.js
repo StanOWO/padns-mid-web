@@ -53,6 +53,7 @@ export async function POST(request) {
 
     return jsonResponse({ avatar });
   } catch (err) {
+    if (err?.digest === 'DYNAMIC_SERVER_USAGE') throw err;
     console.error('Upload error:', err);
     return jsonResponse({ error: '上傳失敗' }, 500);
   }
