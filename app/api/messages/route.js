@@ -1,6 +1,8 @@
 import { getSession } from '@/lib/auth';
 import { getMessages, createMessage, deleteMessage, initDB } from '@/lib/db';
 import {
+
+export const dynamic = 'force-dynamic';
   csrfCheck, rateLimit, sanitize, stripTags, jsonResponse,
 } from '@/lib/security';
 

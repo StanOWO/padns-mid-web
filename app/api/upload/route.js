@@ -1,6 +1,8 @@
 import { getSession } from '@/lib/auth';
 import { updateAvatar, initDB } from '@/lib/db';
 import {
+
+export const dynamic = 'force-dynamic';
   csrfCheck, rateLimit, validateAvatarDataURL, jsonResponse,
 } from '@/lib/security';
 

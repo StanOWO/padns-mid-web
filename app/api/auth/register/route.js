@@ -2,6 +2,8 @@ import bcrypt from 'bcryptjs';
 import { createUser, getUserByUsername, initDB } from '@/lib/db';
 import { signToken, setTokenCookie } from '@/lib/auth';
 import {
+
+export const dynamic = 'force-dynamic';
   csrfCheck, rateLimit, validateUsername, validatePassword,
   sanitize, jsonResponse,
 } from '@/lib/security';
