@@ -1,4 +1,3 @@
-import { sql } from '@vercel/postgres';
 import { getSession } from '@/lib/auth';
 import { getUserById, initDB } from '@/lib/db';
 import { jsonResponse } from '@/lib/security';
@@ -9,74 +8,7 @@ export async function GET(request) {
   try {
     await initDB();
     const session = await getSession(request);
-    const url = new URL(request.url);
-    const debug = url.searchParams.get('debug');
 
-    // Debug 1: table structure + user summary
-    if (debug === '1') {
-      const columns = await sql`
-        SELECT column_name, data_type
-        FROM information_schema.columns WHERE table_name = 'users'
-        ORDER BY ordinal_position
-      `;
-      const allUsers = await sql`
-        SELECT id, username, avatar IS NOT NULL as has_avatar,
-               COALESCE(LENGTH(avatar), 0) as avatar_length
-        FROM users
-      `;
-      return new Response(JSON.stringify({
-        table_columns: columns.rows, session, all_users: allUsers.rows,
-      }, null, 2), {
-        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
-      });
-    }
-
-    // Debug 2: test exact getUserById output
-    if (debug === '2' && session) {
-      const user = await getUserById(session.id);
-      return new Response(JSON.stringify({
-        session_id: session.id,
-        user_found: !!user,
-        user_keys: user ? Object.keys(user) : null,
-        avatar_type: typeof user?.avatar,
-        avatar_is_null: user?.avatar === null,
-        avatar_is_undefined: user?.avatar === undefined,
-        avatar_is_empty: user?.avatar === '',
-        avatar_length: user?.avatar?.length || 0,
-        avatar_first_80: user?.avatar?.substring(0, 80) || null,
-      }, null, 2), {
-        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
-      });
-    }
-
-    // Debug 3: raw SQL test for avatar
-    if (debug === '3' && session) {
-      // Test 1: direct select avatar
-      const r1 = await sql`SELECT avatar FROM users WHERE id = ${session.id}`;
-      const directAvatar = r1.rows[0]?.avatar;
-
-      // Test 2: cast to text explicitly
-      const r2 = await sql`SELECT avatar::text as avatar_text FROM users WHERE id = ${session.id}`;
-      const castAvatar = r2.rows[0]?.avatar_text;
-
-      // Test 3: substring
-      const r3 = await sql`SELECT SUBSTRING(avatar, 1, 80) as avatar_start, LENGTH(avatar) as len FROM users WHERE id = ${session.id}`;
-      const subResult = r3.rows[0];
-
-      return new Response(JSON.stringify({
-        direct_avatar_type: typeof directAvatar,
-        direct_avatar_is_null: directAvatar === null,
-        direct_avatar_first_80: typeof directAvatar === 'string' ? directAvatar.substring(0, 80) : null,
-        cast_avatar_type: typeof castAvatar,
-        cast_avatar_is_null: castAvatar === null,
-        cast_avatar_first_80: typeof castAvatar === 'string' ? castAvatar.substring(0, 80) : null,
-        substring_result: subResult,
-      }, null, 2), {
-        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
-      });
-    }
-
-    // Normal mode
     if (!session) {
       return jsonResponse({ user: null }, 200, {
         'Cache-Control': 'no-store, no-cache, must-revalidate',
@@ -97,6 +29,6 @@ export async function GET(request) {
     });
   } catch (err) {
     if (err?.digest === 'DYNAMIC_SERVER_USAGE') throw err;
-    return jsonResponse({ error: err.message, user: null });
+    return jsonResponse({ user: null });
   }
 }
