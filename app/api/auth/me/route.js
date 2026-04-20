@@ -49,6 +49,33 @@ export async function GET(request) {
       });
     }
 
+    // Debug 3: raw SQL test for avatar
+    if (debug === '3' && session) {
+      // Test 1: direct select avatar
+      const r1 = await sql`SELECT avatar FROM users WHERE id = ${session.id}`;
+      const directAvatar = r1.rows[0]?.avatar;
+
+      // Test 2: cast to text explicitly
+      const r2 = await sql`SELECT avatar::text as avatar_text FROM users WHERE id = ${session.id}`;
+      const castAvatar = r2.rows[0]?.avatar_text;
+
+      // Test 3: substring
+      const r3 = await sql`SELECT SUBSTRING(avatar, 1, 80) as avatar_start, LENGTH(avatar) as len FROM users WHERE id = ${session.id}`;
+      const subResult = r3.rows[0];
+
+      return new Response(JSON.stringify({
+        direct_avatar_type: typeof directAvatar,
+        direct_avatar_is_null: directAvatar === null,
+        direct_avatar_first_80: typeof directAvatar === 'string' ? directAvatar.substring(0, 80) : null,
+        cast_avatar_type: typeof castAvatar,
+        cast_avatar_is_null: castAvatar === null,
+        cast_avatar_first_80: typeof castAvatar === 'string' ? castAvatar.substring(0, 80) : null,
+        substring_result: subResult,
+      }, null, 2), {
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+      });
+    }
+
     // Normal mode
     if (!session) {
       return jsonResponse({ user: null }, 200, {
