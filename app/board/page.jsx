@@ -107,11 +107,10 @@ export default function BoardPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        updateAvatar(data.avatar);    // Sync Navbar + all components
+        updateAvatar(data.avatar);    // Sync Navbar + all components instantly
         setPreview(null);
         setPreviewFile(null);
         if (fileRef.current) fileRef.current.value = '';
-        await refreshUser();          // Re-fetch from DB to ensure consistency
         loadMessages();               // Reload messages with new avatar
         alert('頭貼更新成功！');
       } else {
