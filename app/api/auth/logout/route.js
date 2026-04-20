@@ -13,6 +13,6 @@ export async function POST(request) {
     return jsonResponse({ error: '請求過於頻繁' }, 429);
   }
 
-  clearTokenCookie();
+  await clearTokenCookie();
   return jsonResponse({ ok: true });
 }

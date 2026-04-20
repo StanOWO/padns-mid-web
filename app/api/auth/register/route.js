@@ -51,7 +51,7 @@ export async function POST(request) {
 
     // Issue JWT
     const token = await signToken({ id: user.id, username: user.username });
-    setTokenCookie(token);
+    await setTokenCookie(token);
 
     return jsonResponse({ user: { id: user.id, username: user.username } }, 201);
   } catch (err) {
