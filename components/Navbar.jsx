@@ -7,6 +7,8 @@ export default function Navbar() {
   const { user, logout } = useUser();
   const [menuOpen, setMenuOpen] = useState(false);
 
+  console.log('[NAV] render → user:', user?.username, 'avatar:', !!(user?.avatar));
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-surface-2">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
@@ -14,8 +16,6 @@ export default function Navbar() {
           <Link href="/" className="font-display text-xl font-bold text-brand-800 tracking-tight">
             Stan Wang
           </Link>
-
-          {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-6">
             <Link href="/" className="text-ink-1 hover:text-brand-700 transition font-medium text-sm">首頁</Link>
             <Link href="/board" className="text-ink-1 hover:text-brand-700 transition font-medium text-sm">留言板</Link>
@@ -40,8 +40,6 @@ export default function Navbar() {
               </div>
             )}
           </div>
-
-          {/* Mobile menu button */}
           <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden p-2 text-ink-1">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {menuOpen ? (
@@ -52,7 +50,6 @@ export default function Navbar() {
             </svg>
           </button>
         </div>
-
         {menuOpen && (
           <div className="md:hidden pb-4 border-t border-surface-2 pt-3 flex flex-col gap-3">
             <Link href="/" className="text-ink-1 font-medium" onClick={() => setMenuOpen(false)}>首頁</Link>
