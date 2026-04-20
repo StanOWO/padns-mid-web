@@ -1,4 +1,4 @@
-import { clearTokenCookie } from '@/lib/auth';
+import { buildClearCookie } from '@/lib/auth';
 import { csrfCheck, rateLimit, jsonResponse } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
@@ -13,6 +13,9 @@ export async function POST(request) {
     return jsonResponse({ error: '請求過於頻繁' }, 429);
   }
 
-  await clearTokenCookie();
-  return jsonResponse({ ok: true });
+  return jsonResponse(
+    { ok: true },
+    200,
+    { 'Set-Cookie': buildClearCookie() }
+  );
 }

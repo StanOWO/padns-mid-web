@@ -2,12 +2,11 @@ import { getSession } from '@/lib/auth';
 import { getUserById, initDB } from '@/lib/db';
 import { jsonResponse } from '@/lib/security';
 
-// This route uses cookies() — must not be statically rendered
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request) {
   try {
-    const session = await getSession();
+    const session = await getSession(request);
     if (!session) {
       return jsonResponse({ user: null });
     }

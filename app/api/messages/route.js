@@ -1,10 +1,10 @@
 import { getSession } from '@/lib/auth';
 import { getMessages, createMessage, deleteMessage, initDB } from '@/lib/db';
 import {
-
-export const dynamic = 'force-dynamic';
   csrfCheck, rateLimit, sanitize, stripTags, jsonResponse,
 } from '@/lib/security';
+
+export const dynamic = 'force-dynamic';
 
 // GET /api/messages — public, list messages
 export async function GET() {
@@ -12,13 +12,11 @@ export async function GET() {
     await initDB();
     const messages = await getMessages();
 
-    // Sanitize all user-generated content before sending to client
-    // (defense-in-depth: React also escapes, but we sanitize server-side too)
     const safe = messages.map(m => ({
       id: m.id,
       user_id: m.user_id,
       username: sanitize(m.username),
-      avatar: m.avatar, // validated on upload, always data:image/...
+      avatar: m.avatar,
       content: sanitize(m.content),
       created_at: m.created_at,
     }));
@@ -41,7 +39,7 @@ export async function POST(request) {
     return jsonResponse({ error: '留言過於頻繁，請稍後再試' }, 429);
   }
 
-  const session = await getSession();
+  const session = await getSession(request);
   if (!session) {
     return jsonResponse({ error: '請先登入' }, 401);
   }
@@ -54,7 +52,6 @@ export async function POST(request) {
       return jsonResponse({ error: '留言內容不正確' }, 400);
     }
 
-    // Strip HTML tags to prevent stored XSS
     content = stripTags(content).trim();
 
     if (!content || content.length > 500) {
@@ -62,7 +59,6 @@ export async function POST(request) {
     }
 
     await initDB();
-    // Note: sql`` tagged template uses parameterized queries → immune to SQL injection
     const msg = await createMessage(session.id, content);
 
     return jsonResponse({ message: msg }, 201);
@@ -78,7 +74,7 @@ export async function DELETE(request) {
     return jsonResponse({ error: '請求來源不合法' }, 403);
   }
 
-  const session = await getSession();
+  const session = await getSession(request);
   if (!session) {
     return jsonResponse({ error: '請先登入' }, 401);
   }
@@ -92,7 +88,6 @@ export async function DELETE(request) {
     }
 
     await initDB();
-    // Only delete if user owns the message (parameterized query)
     const deleted = await deleteMessage(id, session.id);
 
     if (!deleted) {
