@@ -28,7 +28,7 @@ export async function POST(request) {
     // ---------- Google Gemini API ----------
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return jsonResponse({ error: 'AI 功能尚未設定 (缺少 GEMINI_API_KEY)' }, 500);
+      return jsonResponse({ error: 'AI 功能尚未啟用' }, 500);
     }
 
     const geminiUrl =
