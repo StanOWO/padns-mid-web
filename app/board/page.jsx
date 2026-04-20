@@ -9,6 +9,8 @@ export default function BoardPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState(null);     // base64 preview
+  const [previewFile, setPreviewFile] = useState(null); // raw base64 to upload
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiResponse, setAiResponse] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
@@ -56,7 +58,8 @@ export default function BoardPage() {
     } catch {}
   };
 
-  const handleUpload = async (e) => {
+  // Step 1: Select file → show preview
+  const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -70,23 +73,48 @@ export default function BoardPage() {
       return;
     }
 
-    setUploading(true);
     const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ avatar: reader.result }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setUser(prev => ({ ...prev, avatar: data.avatar }));
-          loadMessages();
-        }
-      } catch {} finally { setUploading(false); }
+    reader.onload = () => {
+      setPreview(reader.result);
+      setPreviewFile(reader.result);
     };
     reader.readAsDataURL(file);
+  };
+
+  // Step 2: Confirm upload
+  const handleConfirmUpload = async () => {
+    if (!previewFile) return;
+    setUploading(true);
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatar: previewFile }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUser(prev => ({ ...prev, avatar: data.avatar }));
+        setPreview(null);
+        setPreviewFile(null);
+        // Reset file input
+        if (fileRef.current) fileRef.current.value = '';
+        // Reload messages to show updated avatar
+        loadMessages();
+        alert('頭貼更新成功！');
+      } else {
+        const data = await res.json();
+        alert(data.error || '上傳失敗');
+      }
+    } catch {
+      alert('上傳失敗，請稍後再試');
+    } finally { setUploading(false); }
+  };
+
+  // Cancel preview
+  const handleCancelPreview = () => {
+    setPreview(null);
+    setPreviewFile(null);
+    if (fileRef.current) fileRef.current.value = '';
   };
 
   const handleAI = async (e) => {
@@ -101,9 +129,13 @@ export default function BoardPage() {
         body: JSON.stringify({ prompt: aiPrompt.trim() }),
       });
       const data = await res.json();
-      setAiResponse(data.result || data.error || '無法取得回應');
+      if (data.error) {
+        setAiResponse('❌ ' + data.error);
+      } else {
+        setAiResponse(data.result || '無法取得回應');
+      }
     } catch {
-      setAiResponse('AI 服務暫時無法使用');
+      setAiResponse('❌ AI 服務暫時無法使用');
     } finally { setAiLoading(false); }
   };
 
@@ -166,7 +198,6 @@ export default function BoardPage() {
                 {messages.map(msg => (
                   <div key={msg.id} className="card p-5">
                     <div className="flex gap-3">
-                      {/* Avatar */}
                       <div className="flex-shrink-0">
                         {msg.avatar ? (
                           <img src={msg.avatar} alt="" className="w-10 h-10 rounded-full object-cover border border-surface-3" />
@@ -176,7 +207,6 @@ export default function BoardPage() {
                           </div>
                         )}
                       </div>
-                      {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-2">
@@ -206,28 +236,50 @@ export default function BoardPage() {
               <div className="card p-5">
                 <h3 className="font-display font-bold text-ink-0 mb-3">上傳頭貼</h3>
                 <p className="text-xs text-ink-2 mb-3">支援 JPG / PNG，最大 2MB</p>
-                <div className="flex items-center gap-3 mb-3">
-                  {user.avatar ? (
+
+                {/* Current avatar or preview */}
+                <div className="flex items-center gap-3 mb-4">
+                  {preview ? (
+                    <img src={preview} alt="預覽" className="w-16 h-16 rounded-full object-cover border-2 border-green-400" />
+                  ) : user.avatar ? (
                     <img src={user.avatar} alt="" className="w-16 h-16 rounded-full object-cover border-2 border-brand-200" />
                   ) : (
                     <div className="w-16 h-16 rounded-full bg-brand-50 flex items-center justify-center text-brand-600 font-bold text-2xl">
                       {user.username[0].toUpperCase()}
                     </div>
                   )}
+                  {preview && (
+                    <span className="text-xs text-green-600 font-medium">新圖片預覽</span>
+                  )}
                 </div>
-                <input ref={fileRef} type="file" accept=".jpg,.jpeg,.png" onChange={handleUpload}
+
+                <input ref={fileRef} type="file" accept=".jpg,.jpeg,.png" onChange={handleFileSelect}
                   className="hidden" />
-                <button onClick={() => fileRef.current?.click()} disabled={uploading}
-                  className="btn-secondary w-full !py-2 text-sm disabled:opacity-50">
-                  {uploading ? '上傳中...' : '選擇圖片'}
-                </button>
+
+                {!preview ? (
+                  <button onClick={() => fileRef.current?.click()}
+                    className="btn-secondary w-full !py-2 text-sm">
+                    選擇圖片
+                  </button>
+                ) : (
+                  <div className="flex gap-2">
+                    <button onClick={handleConfirmUpload} disabled={uploading}
+                      className="btn-primary flex-1 !py-2 text-sm disabled:opacity-50">
+                      {uploading ? '上傳中...' : '確認上傳'}
+                    </button>
+                    <button onClick={handleCancelPreview}
+                      className="btn-secondary !py-2 !px-3 text-sm">
+                      取消
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* AI Feature (Bonus) */}
+            {/* AI Feature */}
             <div className="card p-5">
               <h3 className="font-display font-bold text-ink-0 mb-1">🤖 AI 文字改寫</h3>
-              <p className="text-xs text-ink-2 mb-3">輸入文字，AI 幫你改寫潤飾</p>
+              <p className="text-xs text-ink-2 mb-3">輸入文字，AI 幫你改寫潤飾 (Powered by Gemini)</p>
               <form onSubmit={handleAI}>
                 <textarea value={aiPrompt} onChange={e => setAiPrompt(e.target.value)}
                   className="input-field min-h-[60px] resize-none mb-3 text-sm"
@@ -238,7 +290,9 @@ export default function BoardPage() {
                 </button>
               </form>
               {aiResponse && (
-                <div className="mt-3 p-3 bg-brand-50 rounded-lg text-sm text-ink-1 whitespace-pre-wrap">
+                <div className={`mt-3 p-3 rounded-lg text-sm whitespace-pre-wrap ${
+                  aiResponse.startsWith('❌') ? 'bg-red-50 text-red-600' : 'bg-brand-50 text-ink-1'
+                }`}>
                   {aiResponse}
                 </div>
               )}
