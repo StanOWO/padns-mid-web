@@ -9,8 +9,9 @@ export function UserProvider({ children }) {
 
   const refreshUser = useCallback(async () => {
     try {
-      const res = await fetch('/api/auth/me', { cache: 'no-store' });
+      const res = await fetch('/api/auth/me?_t=' + Date.now(), { cache: 'no-store' });
       const data = await res.json();
+      console.log('[UserContext] me response:', data.user?.username, 'avatar:', !!(data.user?.avatar));
       setUser(data.user || null);
     } catch {
       setUser(null);
