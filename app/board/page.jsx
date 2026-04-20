@@ -3,8 +3,31 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useUser } from '@/components/UserContext';
 
+// Resize image to 150x150 and compress as JPEG
+function resizeImage(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const size = 150;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+
+      // Crop to square from center
+      const minDim = Math.min(img.width, img.height);
+      const sx = (img.width - minDim) / 2;
+      const sy = (img.height - minDim) / 2;
+      ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+
+      resolve(canvas.toDataURL('image/jpeg', 0.8));
+    };
+    img.src = dataUrl;
+  });
+}
+
 export default function BoardPage() {
-  const { user, updateAvatar } = useUser();
+  const { user, updateAvatar, refreshUser } = useUser();
   const [messages, setMessages] = useState([]);
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
@@ -22,7 +45,7 @@ export default function BoardPage() {
   const loadMessages = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/messages');
+      const res = await fetch('/api/messages', { cache: 'no-store' });
       const data = await res.json();
       setMessages(data.messages || []);
     } catch {} finally { setLoading(false); }
@@ -54,15 +77,21 @@ export default function BoardPage() {
     } catch {}
   };
 
-  // Step 1: Select file -> show preview
-  const handleFileSelect = (e) => {
+  // Step 1: Select file -> resize + preview
+  const handleFileSelect = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const validTypes = ['image/jpeg', 'image/png'];
     if (!validTypes.includes(file.type)) { alert('僅支援 JPG 和 PNG 格式'); return; }
     if (file.size > 2 * 1024 * 1024) { alert('檔案大小不能超過 2MB'); return; }
+
     const reader = new FileReader();
-    reader.onload = () => { setPreview(reader.result); setPreviewFile(reader.result); };
+    reader.onload = async () => {
+      // Resize to 150x150 square, compress as JPEG
+      const resized = await resizeImage(reader.result);
+      setPreview(resized);
+      setPreviewFile(resized);
+    };
     reader.readAsDataURL(file);
   };
 
@@ -78,14 +107,15 @@ export default function BoardPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        updateAvatar(data.avatar);   // Updates Navbar + board + everywhere
+        updateAvatar(data.avatar);    // Sync Navbar + all components
         setPreview(null);
         setPreviewFile(null);
         if (fileRef.current) fileRef.current.value = '';
-        loadMessages();
+        await refreshUser();          // Re-fetch from DB to ensure consistency
+        loadMessages();               // Reload messages with new avatar
         alert('頭貼更新成功！');
       } else {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         alert(data.error || '上傳失敗');
       }
     } catch { alert('上傳失敗，請稍後再試'); }
@@ -120,6 +150,19 @@ export default function BoardPage() {
     return d.toLocaleString('zh-TW', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
+  // Helper: render avatar consistently
+  const Avatar = ({ src, name, size = 10 }) => {
+    const px = size === 16 ? 'w-16 h-16 text-2xl' : 'w-10 h-10 text-sm';
+    if (src) {
+      return <img src={src} alt="" className={`${size === 16 ? 'w-16 h-16' : 'w-10 h-10'} rounded-full object-cover border-2 border-brand-200`} />;
+    }
+    return (
+      <div className={`${px} rounded-full bg-brand-50 flex items-center justify-center text-brand-600 font-bold`}>
+        {(name || '?')[0].toUpperCase()}
+      </div>
+    );
+  };
+
   return (
     <div className="pt-16 min-h-screen bg-surface-1">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
@@ -130,13 +173,7 @@ export default function BoardPage() {
             {user ? (
               <div className="card p-5">
                 <div className="flex items-center gap-3 mb-4">
-                  {user.avatar ? (
-                    <img src={user.avatar} alt="" className="w-10 h-10 rounded-full object-cover border-2 border-brand-200" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold">
-                      {user.username[0].toUpperCase()}
-                    </div>
-                  )}
+                  <Avatar src={user.avatar} name={user.username} />
                   <span className="font-medium text-ink-0">{user.username}</span>
                 </div>
                 <form onSubmit={handlePost}>
@@ -171,13 +208,7 @@ export default function BoardPage() {
                   <div key={msg.id} className="card p-5">
                     <div className="flex gap-3">
                       <div className="flex-shrink-0">
-                        {msg.avatar ? (
-                          <img src={msg.avatar} alt="" className="w-10 h-10 rounded-full object-cover border border-surface-3" />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-brand-50 flex items-center justify-center text-brand-600 font-bold text-sm">
-                            {msg.username[0].toUpperCase()}
-                          </div>
-                        )}
+                        <Avatar src={msg.avatar} name={msg.username} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
@@ -204,18 +235,16 @@ export default function BoardPage() {
             {user && (
               <div className="card p-5">
                 <h3 className="font-display font-bold text-ink-0 mb-3">上傳頭貼</h3>
-                <p className="text-xs text-ink-2 mb-3">支援 JPG / PNG，最大 2MB</p>
+                <p className="text-xs text-ink-2 mb-3">支援 JPG / PNG，最大 2MB（自動裁切為正方形）</p>
                 <div className="flex items-center gap-3 mb-4">
                   {preview ? (
-                    <img src={preview} alt="預覽" className="w-16 h-16 rounded-full object-cover border-2 border-green-400" />
-                  ) : user.avatar ? (
-                    <img src={user.avatar} alt="" className="w-16 h-16 rounded-full object-cover border-2 border-brand-200" />
+                    <>
+                      <img src={preview} alt="預覽" className="w-16 h-16 rounded-full object-cover border-2 border-green-400" />
+                      <span className="text-xs text-green-600 font-medium">新圖片預覽</span>
+                    </>
                   ) : (
-                    <div className="w-16 h-16 rounded-full bg-brand-50 flex items-center justify-center text-brand-600 font-bold text-2xl">
-                      {user.username[0].toUpperCase()}
-                    </div>
+                    <Avatar src={user.avatar} name={user.username} size={16} />
                   )}
-                  {preview && <span className="text-xs text-green-600 font-medium">新圖片預覽</span>}
                 </div>
                 <input ref={fileRef} type="file" accept=".jpg,.jpeg,.png" onChange={handleFileSelect} className="hidden" />
                 {!preview ? (
