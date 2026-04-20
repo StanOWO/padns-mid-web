@@ -7,8 +7,6 @@ export default function Navbar() {
   const { user, logout } = useUser();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  console.log('[NAV] render → user:', user?.username, 'avatar:', !!(user?.avatar));
-
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-surface-2">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
