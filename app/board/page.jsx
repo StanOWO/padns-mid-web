@@ -1,27 +1,23 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useUser } from '@/components/UserContext';
 
 export default function BoardPage() {
-  const [user, setUser] = useState(null);
+  const { user, updateAvatar } = useUser();
   const [messages, setMessages] = useState([]);
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [preview, setPreview] = useState(null);     // base64 preview
-  const [previewFile, setPreviewFile] = useState(null); // raw base64 to upload
+  const [preview, setPreview] = useState(null);
+  const [previewFile, setPreviewFile] = useState(null);
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiResponse, setAiResponse] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const fileRef = useRef(null);
 
-  useEffect(() => {
-    fetch('/api/auth/me').then(r => r.json()).then(data => {
-      if (data.user) setUser(data.user);
-    }).catch(() => {});
-    loadMessages();
-  }, []);
+  useEffect(() => { loadMessages(); }, []);
 
   const loadMessages = async () => {
     setLoading(true);
@@ -58,26 +54,15 @@ export default function BoardPage() {
     } catch {}
   };
 
-  // Step 1: Select file → show preview
+  // Step 1: Select file -> show preview
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const validTypes = ['image/jpeg', 'image/png'];
-    if (!validTypes.includes(file.type)) {
-      alert('僅支援 JPG 和 PNG 格式');
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      alert('檔案大小不能超過 2MB');
-      return;
-    }
-
+    if (!validTypes.includes(file.type)) { alert('僅支援 JPG 和 PNG 格式'); return; }
+    if (file.size > 2 * 1024 * 1024) { alert('檔案大小不能超過 2MB'); return; }
     const reader = new FileReader();
-    reader.onload = () => {
-      setPreview(reader.result);
-      setPreviewFile(reader.result);
-    };
+    reader.onload = () => { setPreview(reader.result); setPreviewFile(reader.result); };
     reader.readAsDataURL(file);
   };
 
@@ -93,27 +78,22 @@ export default function BoardPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setUser(prev => ({ ...prev, avatar: data.avatar }));
+        updateAvatar(data.avatar);   // Updates Navbar + board + everywhere
         setPreview(null);
         setPreviewFile(null);
-        // Reset file input
         if (fileRef.current) fileRef.current.value = '';
-        // Reload messages to show updated avatar
         loadMessages();
         alert('頭貼更新成功！');
       } else {
         const data = await res.json();
         alert(data.error || '上傳失敗');
       }
-    } catch {
-      alert('上傳失敗，請稍後再試');
-    } finally { setUploading(false); }
+    } catch { alert('上傳失敗，請稍後再試'); }
+    finally { setUploading(false); }
   };
 
-  // Cancel preview
   const handleCancelPreview = () => {
-    setPreview(null);
-    setPreviewFile(null);
+    setPreview(null); setPreviewFile(null);
     if (fileRef.current) fileRef.current.value = '';
   };
 
@@ -129,14 +109,10 @@ export default function BoardPage() {
         body: JSON.stringify({ prompt: aiPrompt.trim() }),
       });
       const data = await res.json();
-      if (data.error) {
-        setAiResponse('❌ ' + data.error);
-      } else {
-        setAiResponse(data.result || '無法取得回應');
-      }
-    } catch {
-      setAiResponse('❌ AI 服務暫時無法使用');
-    } finally { setAiLoading(false); }
+      if (data.error) { setAiResponse('❌ ' + data.error); }
+      else { setAiResponse(data.result || '無法取得回應'); }
+    } catch { setAiResponse('❌ AI 服務暫時無法使用'); }
+    finally { setAiLoading(false); }
   };
 
   const formatTime = (ts) => {
@@ -148,11 +124,9 @@ export default function BoardPage() {
     <div className="pt-16 min-h-screen bg-surface-1">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
         <h1 className="font-display text-3xl font-bold text-ink-0 mb-8">留言板 Message Board</h1>
-
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Main board */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Post form */}
             {user ? (
               <div className="card p-5">
                 <div className="flex items-center gap-3 mb-4">
@@ -167,8 +141,7 @@ export default function BoardPage() {
                 </div>
                 <form onSubmit={handlePost}>
                   <textarea value={content} onChange={e => setContent(e.target.value)}
-                    className="input-field min-h-[80px] resize-none mb-3"
-                    placeholder="寫下你的留言..." maxLength={500} />
+                    className="input-field min-h-[80px] resize-none mb-3" placeholder="寫下你的留言..." maxLength={500} />
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-ink-3">{content.length}/500</span>
                     <button type="submit" disabled={sending || !content.trim()}
@@ -188,7 +161,6 @@ export default function BoardPage() {
               </div>
             )}
 
-            {/* Messages list */}
             {loading ? (
               <div className="text-center py-10 text-ink-2">載入中...</div>
             ) : messages.length === 0 ? (
@@ -215,9 +187,7 @@ export default function BoardPage() {
                           </div>
                           {user && user.id === msg.user_id && (
                             <button onClick={() => handleDelete(msg.id)}
-                              className="text-xs text-ink-3 hover:text-red-500 transition">
-                              刪除
-                            </button>
+                              className="text-xs text-ink-3 hover:text-red-500 transition">刪除</button>
                           )}
                         </div>
                         <p className="text-ink-1 text-sm whitespace-pre-wrap break-words">{msg.content}</p>
@@ -231,13 +201,10 @@ export default function BoardPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Avatar upload */}
             {user && (
               <div className="card p-5">
                 <h3 className="font-display font-bold text-ink-0 mb-3">上傳頭貼</h3>
                 <p className="text-xs text-ink-2 mb-3">支援 JPG / PNG，最大 2MB</p>
-
-                {/* Current avatar or preview */}
                 <div className="flex items-center gap-3 mb-4">
                   {preview ? (
                     <img src={preview} alt="預覽" className="w-16 h-16 rounded-full object-cover border-2 border-green-400" />
@@ -248,42 +215,29 @@ export default function BoardPage() {
                       {user.username[0].toUpperCase()}
                     </div>
                   )}
-                  {preview && (
-                    <span className="text-xs text-green-600 font-medium">新圖片預覽</span>
-                  )}
+                  {preview && <span className="text-xs text-green-600 font-medium">新圖片預覽</span>}
                 </div>
-
-                <input ref={fileRef} type="file" accept=".jpg,.jpeg,.png" onChange={handleFileSelect}
-                  className="hidden" />
-
+                <input ref={fileRef} type="file" accept=".jpg,.jpeg,.png" onChange={handleFileSelect} className="hidden" />
                 {!preview ? (
-                  <button onClick={() => fileRef.current?.click()}
-                    className="btn-secondary w-full !py-2 text-sm">
-                    選擇圖片
-                  </button>
+                  <button onClick={() => fileRef.current?.click()} className="btn-secondary w-full !py-2 text-sm">選擇圖片</button>
                 ) : (
                   <div className="flex gap-2">
                     <button onClick={handleConfirmUpload} disabled={uploading}
                       className="btn-primary flex-1 !py-2 text-sm disabled:opacity-50">
                       {uploading ? '上傳中...' : '確認上傳'}
                     </button>
-                    <button onClick={handleCancelPreview}
-                      className="btn-secondary !py-2 !px-3 text-sm">
-                      取消
-                    </button>
+                    <button onClick={handleCancelPreview} className="btn-secondary !py-2 !px-3 text-sm">取消</button>
                   </div>
                 )}
               </div>
             )}
 
-            {/* AI Feature */}
             <div className="card p-5">
               <h3 className="font-display font-bold text-ink-0 mb-1">🤖 AI 文字改寫</h3>
               <p className="text-xs text-ink-2 mb-3">輸入文字，AI 幫你改寫潤飾 (Powered by Gemini)</p>
               <form onSubmit={handleAI}>
                 <textarea value={aiPrompt} onChange={e => setAiPrompt(e.target.value)}
-                  className="input-field min-h-[60px] resize-none mb-3 text-sm"
-                  placeholder="輸入要改寫的文字..." maxLength={300} />
+                  className="input-field min-h-[60px] resize-none mb-3 text-sm" placeholder="輸入要改寫的文字..." maxLength={300} />
                 <button type="submit" disabled={aiLoading || !aiPrompt.trim()}
                   className="btn-primary w-full !py-2 text-sm disabled:opacity-50">
                   {aiLoading ? '生成中...' : 'AI 改寫'}
@@ -292,9 +246,7 @@ export default function BoardPage() {
               {aiResponse && (
                 <div className={`mt-3 p-3 rounded-lg text-sm whitespace-pre-wrap ${
                   aiResponse.startsWith('❌') ? 'bg-red-50 text-red-600' : 'bg-brand-50 text-ink-1'
-                }`}>
-                  {aiResponse}
-                </div>
+                }`}>{aiResponse}</div>
               )}
             </div>
           </div>

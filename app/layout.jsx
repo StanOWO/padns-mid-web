@@ -1,5 +1,6 @@
 import './globals.css';
 import Navbar from '@/components/Navbar';
+import { UserProvider } from '@/components/UserContext';
 
 export const metadata = {
   title: "Stan Wang's Website",
@@ -10,8 +11,10 @@ export default function RootLayout({ children }) {
   return (
     <html lang="zh-TW">
       <body className="min-h-screen">
-        <Navbar />
-        <main>{children}</main>
+        <UserProvider>
+          <Navbar />
+          <main>{children}</main>
+        </UserProvider>
       </body>
     </html>
   );

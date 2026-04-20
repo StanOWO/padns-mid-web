@@ -1,22 +1,11 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
+import { useUser } from '@/components/UserContext';
 
 export default function Navbar() {
-  const [user, setUser] = useState(null);
+  const { user, logout } = useUser();
   const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    fetch('/api/auth/me').then(r => r.json()).then(data => {
-      if (data.user) setUser(data.user);
-    }).catch(() => {});
-  }, []);
-
-  const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    setUser(null);
-    window.location.href = '/';
-  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-surface-2">
@@ -42,7 +31,7 @@ export default function Navbar() {
                   )}
                   <span className="text-sm font-medium text-ink-0">{user.username}</span>
                 </div>
-                <button onClick={handleLogout} className="text-sm text-ink-2 hover:text-red-500 transition">登出</button>
+                <button onClick={logout} className="text-sm text-ink-2 hover:text-red-500 transition">登出</button>
               </div>
             ) : (
               <div className="flex items-center gap-2">
@@ -64,7 +53,6 @@ export default function Navbar() {
           </button>
         </div>
 
-        {/* Mobile menu */}
         {menuOpen && (
           <div className="md:hidden pb-4 border-t border-surface-2 pt-3 flex flex-col gap-3">
             <Link href="/" className="text-ink-1 font-medium" onClick={() => setMenuOpen(false)}>首頁</Link>
@@ -72,7 +60,7 @@ export default function Navbar() {
             {user ? (
               <>
                 <span className="text-sm text-ink-2">Hi, {user.username}</span>
-                <button onClick={handleLogout} className="text-left text-red-500 font-medium">登出</button>
+                <button onClick={logout} className="text-left text-red-500 font-medium">登出</button>
               </>
             ) : (
               <>
