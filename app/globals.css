@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --gradient-brand: linear-gradient(135deg, #4263eb 0%, #5c7cfa 50%, #748ffc 100%);
+}
+
+body {
+  font-family: 'Source Sans 3', sans-serif;
+  color: #212529;
+  background: #f8f9fa;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.6s ease-out forwards;
+}
+
+.animate-delay-1 { animation-delay: 0.1s; opacity: 0; }
+.animate-delay-2 { animation-delay: 0.2s; opacity: 0; }
+.animate-delay-3 { animation-delay: 0.3s; opacity: 0; }
+.animate-delay-4 { animation-delay: 0.4s; opacity: 0; }
+
+.glass {
+  background: rgba(255,255,255,0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.btn-primary {
+  @apply px-6 py-2.5 bg-brand-700 text-white rounded-lg font-medium
+         hover:bg-brand-800 transition-all duration-200
+         active:scale-95 shadow-sm hover:shadow-md;
+}
+
+.btn-secondary {
+  @apply px-6 py-2.5 border-2 border-brand-700 text-brand-700 rounded-lg font-medium
+         hover:bg-brand-50 transition-all duration-200 active:scale-95;
+}
+
+.input-field {
+  @apply w-full px-4 py-3 rounded-lg border border-surface-3
+         bg-white text-ink-0 placeholder:text-ink-3
+         focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent
+         transition-all duration-200;
+}
+
+.card {
+  @apply bg-white rounded-2xl shadow-sm border border-surface-2
+         hover:shadow-md transition-shadow duration-300;
+}
